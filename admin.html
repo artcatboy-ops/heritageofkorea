@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>관리 화면</title>
+<style>
+:root { --bg:#F6F7F9; --surface:#FFFFFF; --ink:#0E1430; --muted:#5B6178; --line:#DCDEE6; --chip:#ECEEF3; --accent:#8F6D2F; --accent-ink:#FFFFFF; --warn:#B3261E; --ok:#1B7F4B; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0B0E1A; --surface:#141932; --ink:#EDEAE2; --muted:#9A9DB2; --line:#262C4A; --chip:#1C2240; --accent:#D9B76B; --accent-ink:#17110A; --warn:#FF8A80; --ok:#6FD39C; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.6 "Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; padding: 0 max(16px, env(safe-area-inset-right,0px)) 60px max(16px, env(safe-area-inset-left,0px)); }
+.wrap { max-width: 1120px; margin: 0 auto; }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-block: 18px; border-bottom: 1px solid var(--line); }
+h1 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+h1 small { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 8px; }
+h2 { font-size: 16px; margin: 0 0 10px; }
+button, .btn { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 4px; padding: 7px 14px; }
+button:hover, .btn:hover { border-color: var(--ink); }
+button.pri { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+button.danger { color: var(--warn); border-color: var(--warn); }
+input[type=text], input[type=password], input[type=datetime-local], input[type=number], select, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; }
+textarea { resize: vertical; min-height: 90px; line-height: 1.7; }
+label { display: block; font-weight: 500; margin-bottom: 4px; }
+.hint { color: var(--muted); font-size: 12.5px; margin: 4px 0 0; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 16px 0; }
+.tabs button { border-radius: 999px; }
+.tabs button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.cols { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-width: 0; }
+.list { display: grid; gap: 6px; margin-top: 12px; max-height: 70vh; overflow: auto; }
+.item { text-align: left; width: 100%; padding: 9px 12px; }
+.item[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.item b { display: block; font-weight: 500; }
+.item span { color: var(--muted); font-size: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field { margin-bottom: 14px; min-width: 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chk { display: inline-flex; gap: 6px; align-items: center; font-weight: 400; margin: 0 14px 0 0; }
+.note { background: var(--chip); border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; }
+.check ul { margin: 6px 0 0; padding-left: 18px; }
+.warn { color: var(--warn); }
+.ok { color: var(--ok); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 13px; z-index: 10; }
+@media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr); } .grid2 { grid-template-columns: minmax(0, 1fr); } }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>관리 화면<small>Heritage of Korea</small></h1>
+    <div class="row">
+      <label class="btn" for="openFile" style="margin:0">content.json 열기</label>
+      <input id="openFile" type="file" accept=".json,application/json" hidden>
+      <button class="pri" type="button" id="goPublish">바로 게시</button>
+      <button type="button" id="goExport">내보내기</button>
+    </div>
+  </header>
+
+  <div class="note" id="statusNote">불러오는 중...</div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <section id="tab-stories">
+    <div class="cols">
+      <div class="panel">
+        <div class="row"><button class="pri" type="button" id="newStory">+ 새 글</button><span class="hint" id="countHint"></span></div>
+        <div class="list" id="storyList"></div>
+      </div>
+      <div class="panel" id="editor"></div>
+    </div>
+  </section>
+
+  <section id="tab-lists" hidden></section>
+
+  <section id="tab-social" hidden class="panel">
+    <h2>유튜브·인스타그램 연결</h2>
+    <p class="hint">입력하면 사이트에 "공식 채널" 구역이 생기고, 유튜브 영상과 인스타그램 게시물을 바로 볼 수 있습니다.</p>
+    <div class="field" style="margin-top:14px"><label for="c_yt_handle">유튜브 채널 핸들</label><input id="c_yt_handle" type="text" placeholder="예: 헤리티지오브코리아"><p class="hint">주소창의 @ 뒤 이름입니다.</p></div>
+    <div class="field"><label for="c_yt_id">유튜브 채널 ID</label><input id="c_yt_id" type="text" placeholder="UC로 시작하는 24자리"><p class="hint">입력하면 채널의 최신 업로드 영상이 사이트에서 바로 재생됩니다. 유튜브 스튜디오 &gt; 설정 &gt; 채널 &gt; 고급 설정에서 확인할 수 있습니다.</p></div>
+    <div class="field"><label for="c_ig_handle">인스타그램 계정</label><input id="c_ig_handle" type="text" placeholder="예: heritage_of_korea"></div>
+    <div class="field"><label for="c_ig_posts">보여 줄 인스타그램 게시물 주소 (한 줄에 하나, 최대 3개)</label><textarea id="c_ig_posts" rows="4" placeholder="https://www.instagram.com/p/XXXXXXXXXXX/"></textarea><p class="hint">게시물이나 릴스의 주소를 붙여 넣으면 사이트에서 바로 보입니다. 인스타그램은 계정 전체를 통째로 보여 주는 방식은 지원하지 않습니다.</p></div>
+  </section>
+
+  <section id="tab-site" hidden class="panel">
+    <h2>사이트 정보</h2>
+    <div class="field"><label for="s_name">사이트 이름</label><input id="s_name" type="text"></div>
+    <div class="field"><label for="s_org">회사·단체 정보 (주소, 대표전화 등)</label><textarea id="s_org" rows="3"></textarea><p class="hint">맨 아래에 그대로 보입니다. 줄바꿈이 반영됩니다.</p></div>
+    <div class="field"><label for="s_contact">문의 안내 (한 줄에 하나)</label><textarea id="s_contact" rows="3"></textarea></div>
+    <div class="field"><label for="s_note">맨 아래 추가 문구 (선택)</label><input id="s_note" type="text"></div>
+    <div class="note">
+      <label class="chk"><input id="s_sample" type="checkbox"> 시안 표시 (예시 콘텐츠를 보여 주는 상태)</label>
+      <p class="hint">체크하면 사이트 맨 위에 "시안" 안내가 뜨고 예시용 구역이 함께 나옵니다. 실제 운영 때는 끄세요.</p>
+      <div class="row" style="margin-top:10px"><button type="button" id="clearSample">예시 콘텐츠 모두 비우기</button><span id="clearAsk" hidden class="row"><span class="warn">기사와 모든 목록이 지워집니다.</span><button type="button" class="danger" id="clearYes">비우기</button><button type="button" id="clearNo">취소</button></span></div>
+    </div>
+  </section>
+
+  <section id="tab-check" hidden class="panel check">
+    <h2>게시 전 점검</h2>
+    <div id="checkBox"></div>
+  </section>
+
+  <section id="tab-ai" hidden class="panel">
+    <h2>AI로 초안 만들 때</h2>
+    <p class="hint">아래 지침을 AI에게 먼저 주고, 출처 자료와 함께 초안을 요청하세요. 결과는 반드시 사람이 확인한 뒤 "새 글"에 붙여 넣습니다.</p>
+    <textarea id="aiPrompt" rows="14" class="mono"></textarea>
+    <div class="row" style="margin-top:8px"><button type="button" id="copyPrompt">지침 복사</button></div>
+  </section>
+
+  <section id="tab-publish" hidden class="panel">
+    <h2>바로 게시</h2>
+    <p>누르면 사이트의 <b>content.json</b>이 바로 바뀝니다. 파일을 내려받거나 따로 올릴 필요가 없습니다. 1~3분 뒤 사이트에 반영됩니다.</p>
+    <div class="note" id="g_state">처음 한 번만 아래 "연결 정보"를 채우세요.</div>
+    <div class="grid2">
+      <div class="field"><label for="g_owner">GitHub 아이디</label><input id="g_owner" type="text" value="artcatboy-ops" autocomplete="off"></div>
+      <div class="field"><label for="g_repo">저장소 이름</label><input id="g_repo" type="text" value="heritageofkorea" autocomplete="off"></div>
+    </div>
+    <div class="field"><label for="g_token">접근 열쇠(토큰)</label><input id="g_token" type="password" placeholder="github_pat_로 시작하는 긴 글자" autocomplete="off"><p class="hint">이 열쇠가 있어야만 게시할 수 있습니다. 남에게 알려 주지 마세요. 만드는 법은 아래에 있습니다.</p></div>
+    <div class="field"><label style="display:flex;gap:8px;align-items:center;font-weight:400"><input id="g_remember" type="checkbox" style="width:auto"> 이 컴퓨터(폰)에 기억하기 (내 기기에서만 체크하세요)</label></div>
+    <div class="row" style="margin:10px 0 14px"><button type="button" id="g_save">연결 정보 저장</button><button type="button" id="g_load">GitHub에서 최신 내용 불러오기</button><button class="pri" type="button" id="g_publish">지금 게시하기</button></div>
+    <div class="note" id="g_confirm" hidden>정말 게시할까요? 사이트 내용이 지금 화면의 내용으로 바뀝니다. <button type="button" class="pri" id="g_yes">네, 게시합니다</button> <button type="button" id="g_no">취소</button></div>
+    <h2 style="margin-top:22px">접근 열쇠 만드는 법 (한 번만)</h2>
+    <ol>
+      <li>github.com에 로그인한 뒤 오른쪽 위 내 사진 → <b>Settings</b></li>
+      <li>맨 아래 <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Fine-grained tokens</b> → <b>Generate new token</b></li>
+      <li>이름은 아무거나(예: 관리화면), 기간(Expiration)은 가능한 길게</li>
+      <li><b>Repository access</b>에서 <b>Only select repositories</b>를 고르고 <b>heritageofkorea</b>만 선택</li>
+      <li><b>Permissions → Repository permissions</b>에서 <b>Contents</b>를 찾아 <b>Read and write</b>로 바꿉니다.</li>
+      <li><b>Generate token</b>을 누르고, 나온 긴 글자를 복사해 위 칸에 붙여 넣습니다. 이 화면은 한 번밖에 안 보이니 꼭 복사하세요.</li>
+    </ol>
+    <p class="hint">열쇠는 이 저장소 하나만 고칠 수 있게 제한됩니다. 기간이 끝나면 같은 방법으로 새로 만드세요. 열쇠가 유출됐다고 생각되면 GitHub에서 그 토큰을 바로 삭제(Revoke)하세요.</p>
+  </section>
+
+  <section id="tab-export" hidden class="panel">
+    <h2>내보내기</h2>
+    <ol>
+      <li>아래 "파일로 저장"을 누르거나 내용을 복사해 <b>content.json</b>으로 저장합니다.</li>
+      <li>호스팅에 올려 둔 기존 content.json 파일을 이 파일로 바꿔 올립니다.</li>
+      <li>사이트를 새로고침하면 바뀐 내용이 보입니다.</li>
+    </ol>
+    <div class="row" style="margin-bottom:10px"><button class="pri" type="button" id="dl">파일로 저장</button><button type="button" id="copyJson">내용 복사</button><button type="button" id="resetDraft">저장된 작성본 지우기</button></div>
+    <textarea id="jsonBox" rows="16" class="mono" readonly></textarea>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+var DEFAULT = {"sample": true, "site": {"name": "Heritage of Korea", "org": "", "contact": [], "note": ""}, "stories": [{"id": 1, "cat": "국가유산", "title": "단청을 다시 입은 문루, 2년 만에 제 빛을 찾았다", "dek": "안료를 분석해 옛 색을 되살린 보수 현장. 전통 기법과 정밀 계측이 함께 쓰였다.", "by": "한도윤 기자", "time": "오전 9:40", "body": ["2년에 걸친 보수를 마친 문루가 다시 모습을 드러냈다. 전문가들은 남아 있던 단청 조각에서 안료 성분을 분석하고, 같은 재료로 색을 다시 만들었다.", "작업은 비계를 두르고 한 칸씩 진행됐다. 단청장은 붓질 하나하나를 기록으로 남겼고, 기와는 상태가 좋은 것을 골라 다시 올렸다. 정밀 계측 장비는 처마의 휨을 매달 확인했다.", "보수를 이끈 책임 기술자는 새것처럼 보이지 않으면서도 오래 버티게 하는 균형이 가장 어려웠다고 말했다. 이 문루는 보수 과정을 설명하는 해설 프로그램과 함께 일반에 공개된다."], "vid": 252, "img": "gwang", "lead": true}, {"id": 2, "cat": "무형유산", "title": "겨울 쪽 염색 이어 가는 이수자들, 장독에 다시 불을 지폈다", "dek": "발효 상태를 손끝과 냄새로 읽는 일. 이수자 열두 명이 한 해 작업을 시작했다.", "by": "류서현 기자", "time": "오전 8:15", "body": ["쪽빛을 내는 염색은 발효에서 시작한다. 이수자 열두 명이 장독 앞에 모여 올해 첫 염액의 상태를 살폈다. 온도계가 있어도 마지막 판단은 냄새와 거품의 빛깔이 한다.", "전승 교육은 일주일에 닷새씩 이어진다. 한 이수자는 같은 염액이라도 날씨에 따라 색이 달라져, 기록과 감각을 함께 쌓아야 한다고 말했다.", "전승 단체는 올해부터 작업 과정을 영상으로 남기는 기록 사업을 병행한다. 영상은 교육 자료로 쓰이고, 일부는 일반에 공개된다."], "vid": 330}, {"id": 3, "cat": "전시·공연", "title": "가을 궁궐 야간 개방, 올해는 국악 연주와 함께", "dek": "고궁의 저녁 조명 아래 열리는 연주회. 사전 예약은 오픈 직후 마감됐다.", "by": "문하린 기자", "time": "어제 오후 6:30", "body": ["가을 밤 궁궐 야간 개방에 국악 연주가 더해졌다. 정자 앞 마당에서 가야금과 대금 앙상블이 한 시간가량 연주를 이어 간다.", "관람객 수를 제한해 소리가 멀리 퍼지도록 했다. 주최 측은 조명 밝기와 동선을 문화유산 보호 기준에 맞춰 조정했다고 설명했다.", "예약은 문을 연 직후 마감됐고, 추가 회차는 다음 달 초에 열린다."], "vid": 190, "img": "gyeong", "feature": true}, {"id": 4, "cat": "전통예술", "title": "판소리 완창 무대 열흘 연속, 젊은 소리꾼들이 맡는다", "dek": "서너 시간의 완창을 열 명이 번갈아 이어 가는 기획 공연이 열린다.", "by": "한도윤 기자", "time": "어제 오후 4:05", "body": ["판소리 완창 무대가 열흘 동안 이어진다. 서너 시간에 이르는 한 마당을 소리꾼 열 명이 하루씩 맡는다.", "참여자 대부분은 서른 안팎이다. 한 소리꾼은 완창은 체력과 집중을 모두 요구하는 일이라, 무대에 서기 전 여섯 달 동안 호흡 훈련을 했다고 말했다.", "공연장은 객석에 자막 화면을 설치해 처음 듣는 관객도 따라갈 수 있게 했다."]}, {"id": 5, "cat": "보존·복원", "title": "3차원 기록으로 석조 구조물의 균열을 읽는다", "dek": "수천 장의 사진을 겹쳐 만든 입체 모형으로 해마다 달라지는 틈을 비교한다.", "by": "백승민 기자", "time": "어제 오후 2:10", "body": ["연구진이 석조 구조물 한 기를 수천 장의 사진으로 촬영해 3차원 모형을 만들었다. 해마다 같은 방식으로 기록하면 머리카락 굵기 수준의 변화도 비교할 수 있다.", "첫 기록에서는 아랫부분 석재 사이의 틈이 확인됐다. 당장 위험한 수준은 아니지만 빗물이 스며드는 경로를 막는 방안을 검토하고 있다.", "야간 조명의 열기가 석재 온도에 미치는 영향도 함께 잰다. 기록은 보존 계획의 기초 자료로 쓰이고, 일부 모형은 누리집에서 공개될 예정이다."], "img": "cheom", "feature": true}, {"id": 6, "cat": "세계유산", "title": "세계유산 석굴 사원, 내부 습도 관리 계획을 새로 세웠다", "dek": "관람 인원과 환기 시간을 함께 조절해 석조 불상을 지키는 방안이 담겼다.", "by": "류서현 기자", "time": "어제 오전 11:20", "body": ["세계유산으로 지정된 한 석굴 사원이 내부 습도 관리 계획을 새로 세웠다. 관람객의 숨과 바깥 공기가 석재 표면에 이슬을 맺히게 하는 문제를 줄이는 것이 목표다.", "계획에는 시간대별 관람 인원 조절과 환기 주기 변경이 담겼다. 연구진은 센서 수십 개로 석굴 안 온도와 습도를 계속 기록해 계획이 효과가 있는지 확인한다.", "관람 시간이 짧아질 수 있다는 우려에는 해설 영상을 입구에서 먼저 보여 주는 방식으로 대응한다. 시범 운영 결과는 내년 봄에 공개된다."], "vid": 280, "img": "seok", "feature": true}, {"id": 7, "cat": "보존·복원", "title": "고문서 3천 장, 종이 섬유까지 분석해 복원 순서를 정했다", "dek": "훼손 정도와 종이 종류를 먼저 분류한 뒤 가장 급한 문서부터 손본다.", "by": "백승민 기자", "time": "그제 오후 5:00", "body": ["고문서 3천 장의 복원 순서가 정해졌다. 연구진은 종이 섬유와 먹의 상태를 분석해 습기에 약한 문서부터 우선순위를 매겼다.", "복원은 접힌 부분을 펴고 찢긴 자리를 한지로 잇는 작업이 중심이다. 약품은 되도록 쓰지 않고, 쓰더라도 되돌릴 수 있는 방법을 고른다.", "복원을 마친 문서는 디지털 사본으로 만들어 열람 신청 없이 볼 수 있게 할 계획이다."]}, {"id": 8, "cat": "전시·공연", "title": "도자 명품전 개막, 청자와 분청을 한자리에서", "dek": "시대별 도자 120점을 빛의 방향에 따라 다르게 보이도록 배치했다.", "by": "문하린 기자", "time": "그제 오전 10:00", "body": ["청자와 분청을 한자리에 모은 도자 전시가 문을 열었다. 시대별로 120점을 골라, 같은 유약이라도 빛에 따라 색이 달라지는 모습을 볼 수 있게 조명을 달리했다.", "전시장 한쪽에는 가마 단면 모형과 흙 만지기 체험 공간을 마련했다. 어린이 관람객이 특히 오래 머문다고 한다.", "전시는 내년 초까지 이어지고, 주말에는 큐레이터와 함께하는 해설 투어가 열린다."]}, {"id": 9, "cat": "무형유산", "title": "장인의 손끝을 영상으로 남긴다, 전승 기록 사업 2기 시작", "dek": "공정마다 카메라 두 대를 놓고 도구와 손동작을 따로 기록한다.", "by": "류서현 기자", "time": "그제 오전 9:10", "body": ["장인의 작업을 영상으로 기록하는 사업이 2기에 들어갔다. 촬영팀은 전체 장면과 손동작을 따로 찍고, 도구 이름과 쓰임을 자막으로 붙인다.", "기록은 후배 전승자의 교육 자료로 쓰인다. 한 장인은 말로 설명하기 어려운 감각을 화면으로 남길 수 있어 다행이라고 말했다.", "2기에는 목공, 금속 공예, 한지 제작 등 열두 개 분야가 포함된다."], "vid": 205}, {"id": 10, "cat": "전통예술", "title": "한복의 현대 해석, 젊은 디자이너 열 팀의 무대", "dek": "저고리의 선과 색을 일상복으로 옮긴 작품들이 무대에 올랐다.", "by": "문하린 기자", "time": "그제 오전 8:00", "body": ["젊은 디자이너 열 팀이 한복을 현대적으로 해석한 작품을 선보였다. 저고리의 곡선을 셔츠에, 배자의 형태를 겉옷에 옮긴 작품이 눈에 띄었다.", "옷감은 전통 직물과 기능성 소재를 섞어 썼다. 디자이너들은 입고 걷기 편한 한복이 목표라고 말했다.", "전시된 작품 일부는 다음 달 팝업 매장에서 판매된다."]}], "notices": [["11월 야간 개방 사전 예약 일정을 안내합니다", "2026.10.22"], ["전승 기록 영상 2기 촬영 협조 요청", "2026.10.19"], ["가을 보존 과학 공개 강좌 참가자 모집", "2026.10.15"], ["고문서 복원 실습 체험 신청 안내", "2026.10.08"], ["누리집 정기 점검 안내(10월 30일 새벽)", "2026.10.02"]], "press": [["[한결뉴스]", "한옥 보수 현장, 전통 공법과 계측의 만남", "2026.10.21"], ["[누리일간]", "젊은 소리꾼 열 명의 열흘 완창", "2026.10.17"], ["[문화저널]", "도자 명품전, 빛으로 읽는 청자", "2026.10.12"], ["[푸른방송]", "쪽 염색 이수자들의 겨울 채비", "2026.10.09"], ["[아침신문]", "세계유산 후보 마을, 주민이 정한 관리 계획", "2026.10.03"]], "schedule": [["18:30", "궁궐 야간 개방"], ["19:00", "석조 유산 야간 조명"], ["14:00", "한옥 보수 현장 해설"], ["10:00", "도자 명품전 관람 시작"], ["09:00", "석굴 사원 관람 시작"], ["20:00", "국악 연주회 입장"]], "opinions": [["문화유산은 복원이 아니라 이어 쓰기다", "김서연 · 문화재 보존과학자"], ["야간 개방, 빛이 유산을 해치지 않으려면", "이도현 · 건축사"], ["전승자의 손을 기록하는 일", "박하윤 · 민속학자"]], "podcasts": [["헤리티지 라디오 · 고택의 목수들", "24분"], ["헤리티지 라디오 · 쪽빛을 읽는 사람들", "31분"], ["헤리티지 라디오 · 밤의 궁궐 이야기", "19분"]], "partners": [["나루 문화재단"], ["한울 전통공예협회"], ["청연 박물관"], ["누리 국악원"]], "social": {"youtube": {"handle": "헤리티지오브코리아", "channelId": "UCAJ4-HW2yi0PxV6qGsU3q9A"}, "instagram": {"handle": "heritageofkorea", "posts": []}}};
+var CATS = ["국가유산","무형유산","전통예술","전시·공연","보존·복원","세계유산"];
+var PHOTOS = [["","없음"],["gyeong","경복궁 경회루 (내장 사진)"],["gwang","경복궁 광화문 (내장 사진)"],["seok","경주 석굴암 본존불 (내장 사진)"],["cheom","경주 첨성대 (내장 사진)"]];
+var LISTS = [
+  ["notices","공지사항","제목 | 날짜","예: 11월 야간 개방 안내 | 2026.10.22"],
+  ["press","미디어 소개","매체 | 제목 | 날짜","예: [매체명] | 소개된 기사 제목 | 2026.10.21"],
+  ["schedule","맨 위 일정 띠","시각 | 내용","예: 18:30 | 야간 개방"],
+  ["opinions","오피니언","제목 | 필자 소개","예: 제목 | 이름 · 직업"],
+  ["podcasts","팟캐스트","제목 | 길이","예: 에피소드 제목 | 24분"],
+  ["partners","협력 기관","이름",""]
+];
+var AIPROMPT = "당신은 문화유산·문화예술 분야 콘텐츠의 초안 작성 보조입니다.\n\n규칙\n1. 제가 준 출처 자료에 있는 사실만 사용합니다. 자료에 없는 숫자, 날짜, 발언, 인물은 만들지 않습니다.\n2. 확인이 필요한 내용은 [확인 필요]로 표시합니다.\n3. 인용문은 출처에 실제로 있는 문장만 씁니다.\n4. 출처(기관명, 자료 이름, 날짜)를 글 끝에 따로 적습니다.\n5. 형식: 제목 1개, 요약 1~2문장, 본문 3~5문단(문단 사이는 빈 줄).\n6. 사진과 영상은 쓰지 않습니다. 사용 권한은 제가 확인합니다.\n7. 사람이 검수한 뒤 올립니다. 이 글은 초안입니다.";
+var data = null, sel = -1, tab = "stories", draftKey = "hok-admin-draft-v1";
+function $(id){ return document.getElementById(id); }
+function toast(t){ var e=$("toast"); e.textContent=t; e.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(function(){ e.hidden=true; },1800); }
+function save(){ try{ localStorage.setItem(draftKey, JSON.stringify(data)); }catch(e){} }
+function nowLocal(){ var d=new Date(), p=function(n){return ("0"+n).slice(-2);}; return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes()); }
+function fix(d){
+  d=d||{}; d.stories=Array.isArray(d.stories)?d.stories:[]; d.site=d.site||{};
+  LISTS.forEach(function(l){ d[l[0]]=Array.isArray(d[l[0]])?d[l[0]]:[]; });
+  d.social=d.social||{}; d.social.youtube=d.social.youtube||{}; d.social.instagram=d.social.instagram||{}; if(!Array.isArray(d.social.instagram.posts)) d.social.instagram.posts=[];
+  d.sample=d.sample===true; return d;
+}
+function load(){
+  var draft=null; try{ draft=JSON.parse(localStorage.getItem(draftKey)||"null"); }catch(e){}
+  if(draft && draft.stories){ data=fix(draft); status("저장해 둔 작성본을 불러왔습니다. 서버 파일로 처음부터 하려면 위의 'content.json 열기'를 쓰세요."); init(); return; }
+  var done=false;
+  function use(d,msg){ if(done) return; done=true; data=fix(d); status(msg); init(); }
+  try{ fetch("content.json",{cache:"no-cache"}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(d){ use(d,"content.json을 불러왔습니다."); }).catch(function(){ use(JSON.parse(JSON.stringify(DEFAULT)),"내장 예시 내용으로 시작합니다. 운영 중인 content.json이 있다면 위에서 열어 주세요."); }); }
+  catch(e){ use(JSON.parse(JSON.stringify(DEFAULT)),"내장 예시 내용으로 시작합니다."); }
+}
+function status(t){ $("statusNote").textContent=t; }
+function init(){ renderTabs(); renderAll(); }
+function renderTabs(){
+  var T=[["stories","기사"],["lists","공지·기타 목록"],["social","유튜브·인스타"],["site","사이트 정보"],["check","게시 전 점검"],["ai","AI 초안 지침"],["publish","바로 게시"],["export","내보내기"]], h="";
+  T.forEach(function(t){ h+='<button type="button" data-tab="'+t[0]+'" aria-pressed="'+(tab===t[0])+'">'+t[1]+'</button>'; });
+  $("tabs").innerHTML=h;
+  T.forEach(function(t){ $("tab-"+t[0]).hidden=(tab!==t[0]); });
+}
+function renderSocialTab(){ var s=data.social; $("c_yt_handle").value=s.youtube.handle||""; $("c_yt_id").value=s.youtube.channelId||""; $("c_ig_handle").value=s.instagram.handle||""; $("c_ig_posts").value=(s.instagram.posts||[]).join("\n"); }
+function bindSocial(){ data.social={ youtube:{ handle:$("c_yt_handle").value.trim(), channelId:$("c_yt_id").value.trim() }, instagram:{ handle:$("c_ig_handle").value.trim(), posts:$("c_ig_posts").value.split("\n").map(function(x){return x.trim();}).filter(Boolean) } }; save(); renderExport(); }
+function renderAll(){ renderList(); renderEditor(); renderLists(); renderSite(); renderSocialTab(); renderCheck(); $("aiPrompt").value=AIPROMPT; renderExport(); }
+function esc(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function renderList(){
+  var h="";
+  data.stories.forEach(function(s,i){ h+='<button type="button" class="item" data-i="'+i+'" aria-pressed="'+(i===sel)+'"><b>'+esc(s.title||"(제목 없음)")+'</b><span>'+esc(s.cat||"")+' · '+esc(s.date?s.date.replace("T"," "):(s.time||""))+(s.vid||s.video?' · 영상':'')+'</span></button>'; });
+  $("storyList").innerHTML=h||'<p class="hint">기사가 없습니다. "+ 새 글"로 시작하세요.</p>';
+  $("countHint").textContent="기사 "+data.stories.length+"건";
+}
+function renderEditor(){
+  var e=$("editor");
+  if(sel<0||!data.stories[sel]){ e.innerHTML='<h2>기사 편집</h2><p class="hint">왼쪽에서 기사를 고르거나 "+ 새 글"을 누르세요.</p>'; return; }
+  var s=data.stories[sel], body=Array.isArray(s.body)?s.body.join("\n\n"):(s.body||""), co="", ph="";
+  CATS.forEach(function(c){ co+='<option'+(s.cat===c?' selected':'')+'>'+c+'</option>'; });
+  PHOTOS.forEach(function(p){ ph+='<option value="'+p[0]+'"'+((s.img||"")===p[0]?' selected':'')+'>'+p[1]+'</option>'; });
+  e.innerHTML='<h2>기사 편집</h2>'+
+  '<div class="field"><label for="f_title">제목</label><input id="f_title" type="text" value="'+esc(s.title)+'"></div>'+
+  '<div class="field"><label for="f_dek">요약 (1~2문장)</label><textarea id="f_dek" rows="2">'+esc(s.dek)+'</textarea></div>'+
+  '<div class="field"><label for="f_body">본문</label><textarea id="f_body" rows="12">'+esc(body)+'</textarea><p class="hint">문단 사이를 빈 줄로 나눕니다. 글자 서식(굵게 등)은 지원하지 않습니다.</p></div>'+
+  '<div class="grid2"><div class="field"><label for="f_cat">분야</label><select id="f_cat">'+co+'</select></div><div class="field"><label for="f_by">작성자 표시</label><input id="f_by" type="text" value="'+esc(s.by)+'" placeholder="예: 홍길동 기자"></div></div>'+
+  '<div class="grid2"><div class="field"><label for="f_date">게시 일시</label><input id="f_date" type="datetime-local" value="'+esc(s.date||"")+'"></div><div class="field"><label for="f_vid">영상 길이(초, 선택)</label><input id="f_vid" type="number" min="0" value="'+esc(s.vid||"")+'"></div></div>'+
+  '<div class="grid2"><div class="field"><label for="f_image">사진 파일 경로</label><input id="f_image" type="text" value="'+esc(s.image||"")+'" placeholder="예: images/palace.jpg"><p class="hint">사진 파일을 호스팅의 images 폴더에 올린 뒤 경로를 적습니다.</p></div><div class="field"><label for="f_credit">사진 출처·저작권자</label><input id="f_credit" type="text" value="'+esc(s.credit||"")+'" placeholder="예: 사진 제공 ○○기관"></div></div>'+
+  '<div class="field"><label for="f_img">내장 사진 사용</label><select id="f_img">'+ph+'</select><p class="hint">처음 시안에 들어 있던 사진입니다. 사용 권한을 확인한 뒤 쓰세요.</p></div>'+
+  '<div class="field"><label for="f_video">영상 주소</label><input id="f_video" type="text" value="'+esc(s.video||"")+'" placeholder="유튜브 주소 또는 .mp4 파일 경로"></div>'+
+  '<div class="field"><label class="chk"><input id="f_lead" type="checkbox"'+(s.lead?' checked':'')+'> 대표 기사 (맨 위에 크게)</label><label class="chk"><input id="f_feature" type="checkbox"'+(s.feature?' checked':'')+'> 기획 특집 (최대 3건)</label></div>'+
+  '<div class="row"><button type="button" class="danger" id="delAsk">이 기사 삭제</button><span id="delBox" hidden class="row"><span class="warn">삭제하면 되돌릴 수 없습니다.</span><button type="button" class="danger" id="delYes">삭제</button><button type="button" id="delNo">취소</button></span></div>';
+}
+function bindEditor(ev){
+  var t=ev.target, s=data.stories[sel]; if(!s||!t.id||t.id.indexOf("f_")!==0) return;
+  var k=t.id.slice(2), v=(t.type==="checkbox")?t.checked:t.value;
+  if(k==="body") s.body=String(v).split(/\n\s*\n/).map(function(p){return p.trim();}).filter(Boolean);
+  else if(k==="vid") s.vid=+v||0;
+  else if(k==="lead"){ if(v) data.stories.forEach(function(x){ x.lead=false; }); s.lead=v; }
+  else if(k==="img") s.img=v||undefined;
+  else s[k]=v;
+  if(k==="date") s.time=undefined;
+  save(); renderList(); renderCheck(); renderExport();
+}
+function renderLists(){
+  var h="";
+  LISTS.forEach(function(l){
+    var rows=(data[l[0]]||[]).map(function(r){ return r.join(" | "); }).join("\n");
+    h+='<div class="panel" style="margin-bottom:14px"><h2>'+l[1]+'</h2><label for="L_'+l[0]+'">한 줄에 하나, 칸은 | 로 나눕니다 ('+l[2]+')</label><textarea id="L_'+l[0]+'" rows="5" placeholder="'+esc(l[3])+'">'+esc(rows)+'</textarea><p class="hint">비워 두면 사이트에서 이 구역이 사라집니다.</p></div>';
+  });
+  $("tab-lists").innerHTML=h;
+}
+function bindLists(ev){
+  var t=ev.target; if(!t.id||t.id.indexOf("L_")!==0) return;
+  var key=t.id.slice(2);
+  data[key]=t.value.split("\n").map(function(x){return x.trim();}).filter(Boolean).map(function(x){ return x.split("|").map(function(c){return c.trim();}); });
+  save(); renderExport();
+}
+function renderSite(){
+  var si=data.site||{};
+  $("s_name").value=si.name||""; $("s_org").value=si.org||""; $("s_contact").value=(si.contact||[]).join("\n"); $("s_note").value=si.note||""; $("s_sample").checked=!!data.sample;
+}
+function bindSite(){
+  data.site={ name:$("s_name").value.trim(), org:$("s_org").value.trim(), contact:$("s_contact").value.split("\n").map(function(x){return x.trim();}).filter(Boolean), note:$("s_note").value.trim() };
+  data.sample=$("s_sample").checked; save(); renderExport();
+}
+function renderCheck(){
+  var out=[], n=0;
+  data.stories.forEach(function(s,i){
+    var p=[];
+    if(!s.title) p.push("제목이 없습니다");
+    if(!s.dek) p.push("요약이 없습니다");
+    if(!s.body||!s.body.length) p.push("본문이 없습니다");
+    if(!s.by) p.push("작성자 표시가 없습니다");
+    if(!s.date && !s.time) p.push("게시 일시가 없습니다");
+    if((s.image||s.img) && !s.credit && !s.img) p.push("사진 출처가 없습니다");
+    if(s.img) p.push("내장 사진을 쓰고 있습니다. 사용 권한을 확인하세요");
+    if(p.length){ n++; out.push('<li><b>'+esc(s.title||"(제목 없음)")+'</b><ul><li class="warn">'+p.join('</li><li class="warn">')+'</li></ul></li>'); }
+  });
+  var g=[];
+  if(data.sample) g.push("시안 표시가 켜져 있습니다. 실제 운영 전에 끄세요.");
+  if(data.sample) g.push("공지, 오피니언, 협력 기관 등은 예시입니다. 실제 내용으로 바꾸거나 비우세요.");
+  if(!(data.site&&data.site.org)) g.push("사이트 정보에 회사·단체 정보가 비어 있습니다.");
+  var ig=data.social&&data.social.instagram; if(!(ig&&ig.handle)) g.push("인스타그램 계정이 아직 연결되지 않았습니다. (선택)");
+  if(data.stories.filter(function(s){return s.feature;}).length>3) g.push("기획 특집이 3건을 넘어 앞의 3건만 보입니다.");
+  var h='<div class="note">'+(n||g.length?'확인할 항목이 있습니다.':'<span class="ok">확인할 항목이 없습니다.</span>')+'</div>';
+  if(g.length) h+='<ul>'+g.map(function(x){return '<li class="warn">'+x+'</li>';}).join('')+'</ul>';
+  if(out.length) h+='<ul>'+out.join('')+'</ul>';
+  $("checkBox").innerHTML=h;
+}
+function clean(){
+  var d=JSON.parse(JSON.stringify(data));
+  d.stories.forEach(function(s,i){ if(!s.id) s.id=i+1; if(s.img===undefined) delete s.img; if(!s.image) delete s.image; if(!s.video) delete s.video; if(!s.vid) delete s.vid; if(!s.credit) delete s.credit; if(!s.lead) delete s.lead; if(!s.feature) delete s.feature; if(s.date) delete s.time; });
+  return d;
+}
+function renderExport(){ $("jsonBox").value=JSON.stringify(clean(),null,2); }
+
+var ghKey="hok-gh-v1";
+function ghCfg(){ return { owner:$("g_owner").value.trim(), repo:$("g_repo").value.trim(), token:$("g_token").value.trim(), branch:"main", path:"content.json" }; }
+function renderPublish(){
+  var c={}; try{ c=JSON.parse(localStorage.getItem(ghKey)||"{}"); }catch(e){}
+  if(c.owner) $("g_owner").value=c.owner; if(c.repo) $("g_repo").value=c.repo;
+  if(c.token){ $("g_token").value=c.token; $("g_remember").checked=true; }
+  gState();
+}
+function gState(t,bad){ var e=$("g_state"); if(t){ e.textContent=t; e.className="note "+(bad?"warn":"ok"); return; } e.className="note"; e.textContent=$("g_token").value.trim()?"연결 정보가 입력되어 있습니다. 내용을 고친 뒤 '지금 게시하기'를 누르세요.":"처음 한 번만 아래 '연결 정보'를 채우세요."; }
+function gSave(){
+  var c=ghCfg();
+  try{ if($("g_remember").checked) localStorage.setItem(ghKey,JSON.stringify({owner:c.owner,repo:c.repo,token:c.token})); else localStorage.setItem(ghKey,JSON.stringify({owner:c.owner,repo:c.repo})); }catch(e){}
+  toast("저장했습니다"); gState();
+}
+function gUrl(c){ return "https://api.github.com/repos/"+encodeURIComponent(c.owner)+"/"+encodeURIComponent(c.repo)+"/contents/"+c.path; }
+function gHead(c,extra){ var h={ "Authorization":"Bearer "+c.token, "X-GitHub-Api-Version":"2022-11-28" }; for(var k in extra) h[k]=extra[k]; return h; }
+function gErr(r){
+  if(r.status===401) return "열쇠(토큰)가 틀렸거나 기간이 끝났습니다. 새로 만들어 붙여 넣으세요.";
+  if(r.status===403) return "이 열쇠로는 고칠 권한이 없습니다. 토큰의 Contents 권한이 Read and write인지 확인하세요.";
+  if(r.status===404) return "저장소나 파일을 찾지 못했습니다. 아이디와 저장소 이름, 그리고 열쇠가 이 저장소용인지 확인하세요.";
+  if(r.status===409||r.status===422) return "그동안 다른 곳에서 파일이 바뀌었습니다. 'GitHub에서 최신 내용 불러오기'를 누른 뒤 다시 시도하세요.";
+  return "게시하지 못했습니다 (오류 "+r.status+"). 잠시 뒤 다시 시도하세요.";
+}
+function gB64(str){ var b=new TextEncoder().encode(str), bin=""; for(var i=0;i<b.length;i+=0x8000) bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(bin); }
+function gLoad(){
+  var c=ghCfg(); if(!c.owner||!c.repo||!c.token){ gState("아이디, 저장소 이름, 열쇠를 먼저 채우세요.",true); return; }
+  gState("불러오는 중...");
+  fetch(gUrl(c)+"?ref="+c.branch+"&t="+Date.now(),{headers:gHead(c,{"Accept":"application/vnd.github.raw+json"}),cache:"no-store"})
+   .then(function(r){ if(!r.ok) return r.text().then(function(){ throw r; }); return r.text(); })
+   .then(function(t){ var d=JSON.parse(t); if(!d||!Array.isArray(d.stories)) throw {status:0}; data=fix(d); sel=-1; save(); renderAll(); gState("GitHub의 최신 내용을 불러왔습니다.",false); })
+   .catch(function(r){ gState(r&&r.status?gErr(r):"불러오지 못했습니다. 인터넷 연결을 확인하세요.",true); });
+}
+function gPublish(){
+  var c=ghCfg(); $("g_confirm").hidden=true;
+  gState("게시하는 중...");
+  var body=JSON.stringify(clean(),null,2)+"\n";
+  fetch(gUrl(c)+"?ref="+c.branch+"&t="+Date.now(),{headers:gHead(c,{"Accept":"application/vnd.github+json"}),cache:"no-store"})
+   .then(function(r){ if(!r.ok) throw r; return r.json(); })
+   .then(function(j){
+     return fetch(gUrl(c),{method:"PUT",headers:gHead(c,{"Accept":"application/vnd.github+json","Content-Type":"application/json"}),
+       body:JSON.stringify({ message:"관리 화면에서 내용 수정", content:gB64(body), sha:j.sha, branch:c.branch })});
+   })
+   .then(function(r){ if(!r.ok) throw r; return r.json(); })
+   .then(function(){ gState("게시했습니다. 1~3분 뒤 사이트에서 확인하세요. (안 바뀌면 Ctrl+Shift+R로 새로고침)",false); toast("게시했습니다"); })
+   .catch(function(r){ gState(r&&r.status?gErr(r):"게시하지 못했습니다. 인터넷 연결을 확인하세요.",true); });
+}
+function copyText(t, ta){
+  function fb(){ ta.focus(); ta.select(); toast("선택했습니다. 복사하세요 (Ctrl/Cmd+C)"); }
+  try{ navigator.clipboard.writeText(t).then(function(){ toast("복사했습니다"); }).catch(fb); }catch(e){ fb(); }
+}
+
+document.addEventListener("click", function(e){
+  var t=e.target.closest("button"); if(!t) return;
+  if(t.dataset.tab){ tab=t.dataset.tab; renderTabs(); if(tab==="export") renderExport(); if(tab==="check") renderCheck(); if(tab==="publish") renderPublish(); return; }
+  if(t.dataset.i!==undefined){ sel=+t.dataset.i; renderList(); renderEditor(); return; }
+  if(t.id==="newStory"){
+    var mx=0; data.stories.forEach(function(s){ if(+s.id>mx) mx=+s.id; });
+    data.stories.unshift({ id:mx+1, cat:CATS[0], title:"", dek:"", by:"", date:nowLocal(), body:[] });
+    sel=0; save(); tab="stories"; renderTabs(); renderList(); renderEditor(); renderCheck(); renderExport();
+    var f=$("f_title"); if(f) f.focus(); return;
+  }
+  if(t.id==="delAsk"){ $("delBox").hidden=false; t.hidden=true; return; }
+  if(t.id==="delNo"){ $("delBox").hidden=true; $("delAsk").hidden=false; return; }
+  if(t.id==="delYes"){ data.stories.splice(sel,1); sel=-1; save(); renderList(); renderEditor(); renderCheck(); renderExport(); toast("삭제했습니다"); return; }
+  if(t.id==="goPublish"){ tab="publish"; renderTabs(); renderPublish(); return; }
+  if(t.id==="g_save"){ gSave(); return; }
+  if(t.id==="g_load"){ gLoad(); return; }
+  if(t.id==="g_publish"){ var c=ghCfg(); if(!c.owner||!c.repo||!c.token){ gState("아이디, 저장소 이름, 열쇠를 먼저 채우세요.",true); return; } $("g_confirm").hidden=false; return; }
+  if(t.id==="g_no"){ $("g_confirm").hidden=true; return; }
+  if(t.id==="g_yes"){ gPublish(); return; }
+  if(t.id==="goExport"){ tab="export"; renderTabs(); renderExport(); return; }
+  if(t.id==="clearSample"){ $("clearAsk").hidden=false; t.hidden=true; return; }
+  if(t.id==="clearNo"){ $("clearAsk").hidden=true; $("clearSample").hidden=false; return; }
+  if(t.id==="clearYes"){ data.stories=[]; LISTS.forEach(function(l){ data[l[0]]=[]; }); data.sample=false; sel=-1; save(); renderAll(); $("clearAsk").hidden=true; $("clearSample").hidden=false; toast("예시 콘텐츠를 비웠습니다"); return; }
+  if(t.id==="copyPrompt"){ copyText(AIPROMPT,$("aiPrompt")); return; }
+  if(t.id==="copyJson"){ copyText($("jsonBox").value,$("jsonBox")); return; }
+  if(t.id==="dl"){
+    try{ var b=new Blob([$("jsonBox").value],{type:"application/json"}), a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="content.json"; document.body.appendChild(a); a.click(); a.remove(); toast("content.json을 저장합니다"); }
+    catch(err){ copyText($("jsonBox").value,$("jsonBox")); }
+    return;
+  }
+  if(t.id==="resetDraft"){ try{ localStorage.removeItem(draftKey); }catch(err){} toast("저장된 작성본을 지웠습니다. 새로고침하면 처음 상태로 돌아갑니다."); return; }
+});
+document.addEventListener("input", function(e){
+  bindEditor(e); bindLists(e);
+  if(e.target.id && e.target.id.indexOf("s_")===0) bindSite();
+  if(e.target.id && e.target.id.indexOf("c_")===0) bindSocial();
+});
+document.addEventListener("change", function(e){ bindEditor(e); if(e.target.id && e.target.id.indexOf("s_")===0) bindSite(); });
+$("openFile").addEventListener("change", function(e){
+  var f=e.target.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{ var d=JSON.parse(r.result); if(!d||!Array.isArray(d.stories)) throw 0; data=fix(d); sel=-1; save(); status(f.name+" 파일을 불러왔습니다."); renderAll(); toast("불러왔습니다"); }
+    catch(err){ toast("올바른 content.json 파일이 아닙니다"); }
+  };
+  r.readAsText(f);
+});
+load();
+</script>
+</body>
+</html>
